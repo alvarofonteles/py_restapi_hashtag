@@ -14,3 +14,12 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+
+# Virtual Environment
+.env
+.venv/
+venv/
+
+# FastAPI
+instance/
+*.log
