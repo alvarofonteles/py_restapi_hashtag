@@ -1,4 +1,4 @@
-# Curso de FastAPI - Rest API com Python
+# Curso de FastAPI - Rest API com Python (Backend Completo) - por Hashtag Programação
 
 ## 🎯 Playlist Completa
 Duração: 06:18:12  
