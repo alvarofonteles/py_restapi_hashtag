@@ -23,3 +23,7 @@ venv/
 # FastAPI
 instance/
 *.log
+
+# SQLite - APENAS o banco  
+delivery_fastapi/*.db
+delivery_fastapi/*.sqlite3
