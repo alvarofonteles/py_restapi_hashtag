@@ -55,12 +55,12 @@ class Pedido(Base):
     )  # PENDENTE, CANCELADO, FINALIZADO
 
     # nome e campo(PK) da tabela Usuario no banco (chave estrangeira)
-    usuario = Column('usuario', ForeignKey('usuarios.id'))
+    id_usuario = Column('usuario', ForeignKey('usuarios.id'))
     preco = Column('preco', Float)
     # itens =
 
     def __init__(self, usuario, status='PENDENTE', preco=0):
-        self.usuario = usuario
+        self.id_usuario = usuario
         self.status = status
         self.preco = preco
 

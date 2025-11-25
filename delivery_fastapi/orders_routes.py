@@ -1,7 +1,10 @@
 '''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
-import json
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from shemas import PedidoShema
+from sqlalchemy.orm import Session
+from dependencies import pegar_sessao
+from models import Pedido
 
 # roteador da rota pedidos
 order_router = APIRouter(prefix='/pedidos', tags=['pedidos'])
@@ -23,3 +26,16 @@ async def pedidos():
     return {
         'mensagem': 'Você está acessando a rota Pedidos',
     }
+
+
+@order_router.post('/pedido')
+async def criar_pedido(
+    pedido_shema: PedidoShema, session: Session = Depends(pegar_sessao)
+):
+    pedido_novo = Pedido(usuario=pedido_shema.id_usuario)
+
+    session.add(pedido_novo)
+    session.commit()
+
+    return {'mensagem': f'Pedido {pedido_novo.id}, criado com Sucesso!'}
+    ...

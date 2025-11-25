@@ -1,11 +1,4 @@
-'''
-Curso de FastAPI - Rest API com Python (Backend Completo)
-
-- Aula 01: Apresentação do Projeto
-- Aula 02: Requisições e Roteamento da API
-- Aula 03: Banco de Dados, Modelos e Migrações
-- Aula 04: Criar conta de usuário, Schemas e Criptografia
-'''
+'''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
 from fastapi import FastAPI
 from passlib.context import CryptContext

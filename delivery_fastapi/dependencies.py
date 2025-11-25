@@ -1,3 +1,5 @@
+'''Curso de FastAPI - Rest API com Python (Backend Completo)'''
+
 from models import db
 from sqlalchemy.orm import sessionmaker
 
