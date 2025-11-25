@@ -10,7 +10,8 @@ load_dotenv()  # carrega do arquivo .env
 SECRET_KEY = getenv('SECRET_KEY')
 ALGORITHM = getenv('ALGORITHM')
 # converte em inteiro pra data da expiração do Token
-ACCESS_TOKEN_EXP_MIN = int(getenv('ACCESS_TOKEN_EXP_MIN'))
+ACCESS_TOKEN_EXP_MIN = int(getenv('ACCESS_TOKEN_EXP_MIN', 15))
+REFRESH_TOKEN_EXP_DAY = int(getenv('REFRESH_TOKEN_EXP_DAY', 7)) # Extra
 
 app = FastAPI()
 

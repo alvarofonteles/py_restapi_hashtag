@@ -3,7 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from models import Usuario
 from dependencies import pegar_sessao
-from main import bcrypt_context, ALGORITHM, ACCESS_TOKEN_EXP_MIN, SECRET_KEY
+from main import (
+    bcrypt_context,
+    ALGORITHM,
+    ACCESS_TOKEN_EXP_MIN,
+    SECRET_KEY,
+    REFRESH_TOKEN_EXP_DAY,
+)
 from shemas import UsuarioShema, LoginShema
 from sqlalchemy.orm import Session
 from dependencies import pegar_sessao
@@ -13,18 +19,28 @@ from jose import jwt, JWTError
 auth_router = APIRouter(prefix='/auth', tags=['auth'])
 
 
-def gerar_token(id_usuario):
+def gerar_token(id_usuario, refresh=timedelta(minutes=ACCESS_TOKEN_EXP_MIN)):
     # data da expiração do Token
-    data_exp = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXP_MIN)
+    # se passar o refresh, é atualizado, senao segue default
+    data_exp = datetime.now(timezone.utc) + refresh
 
     # dicionario de informação para o encode
-    dict_info = {'sub': id_usuario, 'exp': data_exp}
+    dict_info = {'sub': str(id_usuario), 'exp': data_exp}
 
     # GERA O TOKEN
     jwt_encode = jwt.encode(dict_info, SECRET_KEY, ALGORITHM)
 
     # retorna o Token
     return jwt_encode
+
+
+def verifica_token(token):
+
+    try:
+        jwt_decode = jwt.decode(token, SECRET_KEY, ALGORITHM)
+        return jwt_decode
+    except JWTError:
+        return None  # retorna None, não trata erro
 
 
 # validação de email (reaproveita)
@@ -95,14 +111,46 @@ async def login(login_shema: LoginShema, session: Session = Depends(pegar_sessao
     if not usuario:
         raise HTTPException(status_code=400, detail='Credenciais inválidas!')
 
+    # gera token de 15 min
     access_token = gerar_token(usuario.id)
 
-    return {'access_token': access_token, 'token_type': 'Bearer'}
+    # gera o refresh token de 7 dias
+    refresh = timedelta(days=REFRESH_TOKEN_EXP_DAY)
+    refresh_token = gerar_token(id_usuario=usuario.id, refresh=refresh)
+
+    return {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'token_type': 'Bearer',
+    }
 
     # {
-    #     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjMsImV4cCI6MTc2NDA5OTQ4NH0.cu7HTgkSI37qecA-eyjB1QA_q3IvAcVTHYgzUrg--hs",
+    #     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZXhwIjoxNzY0MTA4Mzk5fQ.rZD3t06kHRQVgcH_BJZecLbVkHbPWzsRJtoHuMURZ9M",
+    #     "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZXhwIjoxNzY0NzExMzk5fQ.acXhw1PztRjFJdywfKIbhlNeGqkRQQVWnOtNvCivKFI",
     #     "token_type": "Bearer"
     # }
-    
+
     # JWT Bearer
     # headers = {'Access-Token': 'Bearer token}
+
+
+@auth_router.get('/refresh')
+async def refresh_token(refresh_token):
+    # checagem se já existe usando a função para autenticação
+    payload = verifica_token(refresh_token)
+
+    # trata o erro de verdade
+    if not payload:
+        raise HTTPException(status_code=401, detail='Token inválido ou expirado')
+
+    # Extrai o user_id do payload e converte pra int
+    id_usuario = int(payload.get('sub'))
+
+    # NO refresh endpoint - SÓ GERA ACCESS NOVO
+    new_access_token = gerar_token(id_usuario)
+    # refresh_token continua o MESMO com os 7 dias originais
+
+    return {
+        'access_token': new_access_token,
+        'token_type': 'Bearer',
+    }
