@@ -8,6 +8,9 @@ from os import getenv
 load_dotenv()  # carrega do arquivo .env
 
 SECRET_KEY = getenv('SECRET_KEY')
+ALGORITHM = getenv('ALGORITHM')
+# converte em inteiro pra data da expiração do Token
+ACCESS_TOKEN_EXP_MIN = int(getenv('ACCESS_TOKEN_EXP_MIN'))
 
 app = FastAPI()
 
