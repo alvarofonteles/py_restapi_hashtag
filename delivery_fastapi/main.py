@@ -1,6 +1,7 @@
 '''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
 from fastapi import FastAPI
+from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 from os import getenv
@@ -17,6 +18,8 @@ app = FastAPI()
 
 # usará pra criptografia usando hash
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+# authentic OAuth2
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 from auth_routes import auth_router
 from orders_routes import order_router

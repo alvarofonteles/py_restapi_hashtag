@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from models import Usuario
-from dependencies import pegar_sessao
+from dependencies import pegar_sessao, verifica_token
 from main import (
     bcrypt_context,
     ALGORITHM,
@@ -32,15 +32,6 @@ def gerar_token(id_usuario, refresh=timedelta(minutes=ACCESS_TOKEN_EXP_MIN)):
 
     # retorna o Token
     return jwt_encode
-
-
-def verifica_token(token):
-
-    try:
-        jwt_decode = jwt.decode(token, SECRET_KEY, ALGORITHM)
-        return jwt_decode
-    except JWTError:
-        return None  # retorna None, não trata erro
 
 
 # validação de email (reaproveita)
@@ -124,30 +115,16 @@ async def login(login_shema: LoginShema, session: Session = Depends(pegar_sessao
         'token_type': 'Bearer',
     }
 
-    # {
-    #     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZXhwIjoxNzY0MTA4Mzk5fQ.rZD3t06kHRQVgcH_BJZecLbVkHbPWzsRJtoHuMURZ9M",
-    #     "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZXhwIjoxNzY0NzExMzk5fQ.acXhw1PztRjFJdywfKIbhlNeGqkRQQVWnOtNvCivKFI",
-    #     "token_type": "Bearer"
-    # }
-
     # JWT Bearer
     # headers = {'Access-Token': 'Bearer token}
 
 
+# já com usuário validado
 @auth_router.get('/refresh')
-async def refresh_token(refresh_token):
-    # checagem se já existe usando a função para autenticação
-    payload = verifica_token(refresh_token)
+async def refresh_token(usuario: Usuario = Depends(verifica_token)):
 
-    # trata o erro de verdade
-    if not payload:
-        raise HTTPException(status_code=401, detail='Token inválido ou expirado')
-
-    # Extrai o user_id do payload e converte pra int
-    id_usuario = int(payload.get('sub'))
-
-    # NO refresh endpoint - SÓ GERA ACCESS NOVO
-    new_access_token = gerar_token(id_usuario)
+    # No refresh endpoint - SÓ GERA ACCESS NOVO
+    new_access_token = gerar_token(usuario.id)
     # refresh_token continua o MESMO com os 7 dias originais
 
     return {
