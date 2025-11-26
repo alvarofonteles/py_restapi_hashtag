@@ -19,7 +19,7 @@ app = FastAPI()
 # usará pra criptografia usando hash
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 # authentic OAuth2
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login-form")
 
 from auth_routes import auth_router
 from orders_routes import order_router

@@ -14,7 +14,8 @@ from shemas import UsuarioShema, LoginShema
 from sqlalchemy.orm import Session
 from dependencies import pegar_sessao
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError
+from jose import jwt
+from fastapi.security import OAuth2PasswordRequestForm
 
 auth_router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -41,15 +42,22 @@ def verifica_email_existente(email: str, session: Session) -> Usuario | None:
 
 
 # validação de usario e senha na base de dados
-def autentica_login(shema: LoginShema, session: Session) -> Usuario | bool:
+def autentica_login(
+    shema: LoginShema | OAuth2PasswordRequestForm, session: Session
+) -> Usuario | bool:
+
+    # compatibilidade com ambos os schemas
+    email = getattr(shema, 'email', None) or shema.username
+    senha = getattr(shema, 'senha', None) or shema.password
+
     '''Autentica usuário com e-mail e senha'''
-    usuario = verifica_email_existente(shema.email, session)
+    usuario = verifica_email_existente(email, session)
 
     if not usuario:
         return False
 
     # verifica a senha hash na base
-    if not bcrypt_context.verify(shema.senha, usuario.senha):
+    if not bcrypt_context.verify(senha, usuario.senha):
         return False
 
     return usuario  # retorna autenticado
@@ -117,6 +125,27 @@ async def login(login_shema: LoginShema, session: Session = Depends(pegar_sessao
 
     # JWT Bearer
     # headers = {'Access-Token': 'Bearer token}
+
+
+# autenticação via swegger fastapi (login-form)
+@auth_router.post('/login-form')
+async def login_form(
+    datas_form: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(pegar_sessao),
+):
+    # checagem se já existe usando a função para autenticação
+    usuario = autentica_login(shema=datas_form, session=session)
+
+    if not usuario:
+        raise HTTPException(status_code=400, detail='Credenciais inválidas!')
+
+    # gera token de 15 min
+    access_token = gerar_token(usuario.id)   
+
+    return {
+        'access_token': access_token,
+        'token_type': 'Bearer',
+    }
 
 
 # já com usuário validado
