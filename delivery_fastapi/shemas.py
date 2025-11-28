@@ -26,3 +26,10 @@ class PedidoShema(BaseShema):
 class LoginShema(BaseShema):
     email: str
     senha: str
+
+
+class ItensPedidoShema(BaseShema):
+    quantidade: int
+    sabor: str
+    tamanho: str
+    preco_unitario: float

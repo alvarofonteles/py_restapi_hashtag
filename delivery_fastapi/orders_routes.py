@@ -1,11 +1,10 @@
 '''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
-from turtle import st
 from fastapi import APIRouter, Depends, HTTPException
-from shemas import PedidoShema
+from shemas import PedidoShema, ItensPedidoShema
 from sqlalchemy.orm import Session
 from dependencies import pegar_sessao, verifica_token
-from models import Pedido, Usuario
+from models import Pedido, Usuario, ItensPedido
 
 # roteador da rota pedidos
 order_router = APIRouter(
@@ -35,6 +34,7 @@ async def pedidos():
 async def criar_pedido(
     pedido_shema: PedidoShema, session: Session = Depends(pegar_sessao)
 ):
+    '''criar pedido'''
     pedido_novo = Pedido(usuario=pedido_shema.id_usuario)
 
     session.add(pedido_novo)
@@ -49,6 +49,7 @@ async def cancelar_pedido(
     session: Session = Depends(pegar_sessao),
     usuario: Usuario = Depends(verifica_token),
 ):
+    '''cancelar pedido'''
     pedido = session.query(Pedido).filter(Pedido.id == id_pedido).first()
     if not pedido:
         raise HTTPException(status_code=400, detail='Pedido não encontrado.')
@@ -64,5 +65,69 @@ async def cancelar_pedido(
 
     return {
         'mensagem': f'Pedido número: {pedido.id}, cancelado com sucesso!',
+        'pedido': pedido,
+    }
+
+
+@order_router.get('/listar')
+async def listar_pedidos(
+    session: Session = Depends(pegar_sessao), usuario: Usuario = Depends(verifica_token)
+):
+    '''
+    listar pedidos
+    - funcionando
+      - top
+    '''
+
+    # checagem se ele é administrador
+    if not usuario.admin:
+        raise HTTPException(
+            status_code=401, detail='Você não tem autorização para fazer essa operação.'
+        )
+
+    # retorna todos os pedidos
+    pedidos = session.query(Pedido).all()
+
+    # devolve a lista de todos os pedidos
+    return {'pedidos': pedidos}
+
+
+@order_router.post('/adicionar-item/{id_pedido}')
+async def adicionar_item_pedido(
+    id_pedido: int,
+    itens_shema: ItensPedidoShema,
+    session: Session = Depends(pegar_sessao),
+    usuario: Usuario = Depends(verifica_token),
+):
+    '''Adiciona item pedido e atualiza preço do pedido'''
+    pedido = session.query(Pedido).filter(Pedido.id == id_pedido).first()
+
+    if not pedido:
+        raise HTTPException(status_code=400, detail='Pedido não encontrado.')
+
+    if not usuario.admin and usuario.id != pedido.id_usuario:
+        raise HTTPException(
+            status_code=401, detail='Você não tem autorização para fazer essa operação.'
+        )
+
+    item_pedido = ItensPedido(
+        itens_shema.quantidade,
+        itens_shema.sabor,
+        itens_shema.tamanho,
+        itens_shema.preco_unitario,
+        id_pedido,
+    )
+
+    # adiciona itens pedido
+    session.add(item_pedido)
+
+    # atualiza preço no Pedido (Mocado)
+    pedido.calcula_preco()
+
+    # commit na sessão
+    session.commit()
+
+    return {
+        'mensagem': f'Item: {item_pedido.id}, com valor total: {pedido.preco}, criado com Sucesso!',
         'pedido': pedido,
     }

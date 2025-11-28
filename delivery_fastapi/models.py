@@ -9,7 +9,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
 )
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy_utils import ChoiceType
 
 # cria sua conexão com a base
@@ -57,12 +57,19 @@ class Pedido(Base):
     # nome e campo(PK) da tabela Usuario no banco (chave estrangeira)
     id_usuario = Column('usuario', ForeignKey('usuarios.id'))
     preco = Column('preco', Float)
-    # itens =
+    itens = relationship('ItensPedido', cascade='all, delete')
 
     def __init__(self, usuario, status='PENDENTE', preco=0):
         self.id_usuario = usuario
         self.status = status
         self.preco = preco
+
+    def calcula_preco(self):
+        self.preco = (
+            sum(itens.preco_unitario * itens.quantidade for itens in self.itens)
+            if self.itens
+            else 0
+        )
 
 
 class ItensPedido(Base):
