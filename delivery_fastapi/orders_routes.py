@@ -1,10 +1,11 @@
 '''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
 from fastapi import APIRouter, Depends, HTTPException
-from shemas import PedidoShema, ItensPedidoShema
+from shemas import PedidoShema, ItensPedidoShema, ResponsePedidoShema
 from sqlalchemy.orm import Session
 from dependencies import pegar_sessao, verifica_token
 from models import Pedido, Usuario, ItensPedido
+from typing import List
 
 # roteador da rota pedidos
 order_router = APIRouter(
@@ -100,11 +101,15 @@ async def adicionar_item_pedido(
     usuario: Usuario = Depends(verifica_token),
 ):
     '''Adiciona item pedido e atualiza preço do pedido'''
+
+    # pega o pedido
     pedido = session.query(Pedido).filter(Pedido.id == id_pedido).first()
 
+    # valida o pedido se existe
     if not pedido:
         raise HTTPException(status_code=400, detail='Pedido não encontrado.')
 
+    # valida o usuario é admin ou dono do pedido se existe
     if not usuario.admin and usuario.id != pedido.id_usuario:
         raise HTTPException(
             status_code=401, detail='Você não tem autorização para fazer essa operação.'
@@ -131,3 +136,121 @@ async def adicionar_item_pedido(
         'mensagem': f'Item: {item_pedido.id}, com valor total: {pedido.preco}, criado com Sucesso!',
         'pedido': pedido,
     }
+
+
+@order_router.post('/remover-item/{id_item_pedido}')
+async def remover_item_pedido(
+    id_item_pedido: int,
+    session: Session = Depends(pegar_sessao),
+    usuario: Usuario = Depends(verifica_token),
+):
+    '''Remover item pedido e atualiza preço do pedido'''
+
+    # pega o item do pedido
+    item_pedido = (
+        session.query(ItensPedido).filter(ItensPedido.id == id_item_pedido).first()
+    )
+
+    # valida o item do pedido se existe
+    if not item_pedido:
+        raise HTTPException(status_code=400, detail='Item do Pedido não encontrado.')
+
+    # pega o pedido
+    pedido = session.query(Pedido).filter(Pedido.id == item_pedido.pedido).first()
+
+    # valida o pedido se existe
+    if not pedido:
+        raise HTTPException(status_code=400, detail='Pedido não encontrado.')
+
+    # valida o usuario é admin ou dono do pedido se existe
+    if not usuario.admin and usuario.id != pedido.id_usuario:
+        raise HTTPException(
+            status_code=401, detail='Você não tem autorização para fazer essa operação.'
+        )
+
+    # remover itens pedido passando a instancia
+    session.delete(item_pedido)
+
+    # atualiza preço no Pedido (Mocado)
+    pedido.calcula_preco()
+
+    # commit na sessão
+    session.commit()
+
+    return {
+        'mensagem': f'Item: {item_pedido.id} do pedido: {pedido.id}, removido com Sucesso!',
+        'quantidade': len(pedido.itens),
+        'pedido': pedido,
+    }
+
+
+@order_router.post('/finalizar/{id_pedido}')
+async def finalizar_pedido(
+    id_pedido: int,
+    session: Session = Depends(pegar_sessao),
+    usuario: Usuario = Depends(verifica_token),
+):
+    '''finalizar pedido'''
+
+    pedido = session.query(Pedido).filter(Pedido.id == id_pedido).first()
+    if not pedido:
+        raise HTTPException(status_code=400, detail='Pedido não encontrado.')
+
+    # valida o usuario é admin ou dono do pedido se existe
+    if not usuario.admin and usuario.id != pedido.id_usuario:
+        raise HTTPException(
+            status_code=401,
+            detail='Você não tem autorização para fazer essa finalização.',
+        )
+
+    pedido.status = 'FINALIZADO'
+    session.commit()
+
+    return {
+        'mensagem': f'Pedido número: {pedido.id}, finalizado com sucesso!',
+        'pedido': pedido,
+    }
+
+
+@order_router.get('/listar/{id_pedido}')
+async def listar_pedido(
+    id_pedido: int,
+    session: Session = Depends(pegar_sessao),
+    usuario: Usuario = Depends(verifica_token),
+):
+    '''listar pedido do usuario'''
+
+    pedido = session.query(Pedido).filter(Pedido.id == id_pedido).first()
+
+    # valida o pedido se existe
+    if not pedido:
+        raise HTTPException(status_code=400, detail='Pedido não encontrado.')
+
+    # valida o usuario é admin ou dono do pedido se existe
+    if not usuario.admin and usuario.id != pedido.id_usuario:
+        raise HTTPException(
+            status_code=401, detail='Você não tem autorização para fazer essa operação.'
+        )
+
+    # devolve a lista do usuario do pedido
+    return {
+        'mensagem': f'Seus Pedidos {usuario.nome}!',
+        'quantidade': len(pedido.itens),
+        'pedido': pedido,
+    }
+
+
+@order_router.get('/pedidos-usuario', response_model=List[ResponsePedidoShema])
+async def pedidos_usuario(
+    session: Session = Depends(pegar_sessao), usuario: Usuario = Depends(verifica_token)
+):
+    '''listar todos os pedidos do usuario logado no sistema'''
+
+    # retorna todos os pedidos do usuario logado
+    pedidos = session.query(Pedido).filter(Pedido.id_usuario == usuario.id).all()
+
+    # devolve a lista de todos os pedidos
+    # return {'pedidos-usuario': pedidos}
+
+    # devolve a lista de todos os pedidos personalizada via shema
+    return pedidos

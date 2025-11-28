@@ -1,7 +1,7 @@
 '''Curso de FastAPI - Rest API com Python (Backend Completo)'''
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 # pra não ficar redundante
@@ -33,3 +33,10 @@ class ItensPedidoShema(BaseShema):
     sabor: str
     tamanho: str
     preco_unitario: float
+
+
+class ResponsePedidoShema(BaseShema):
+    id: int
+    status: str
+    preco: float
+    itens: List[ItensPedidoShema]
